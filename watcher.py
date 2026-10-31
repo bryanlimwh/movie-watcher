@@ -11,6 +11,7 @@ import requests
 TARGETS = {
     "dune": None,
     "sunrise on the reaping": None,
+    "wildwood": "2026-11-07",
 }
 
 # Optional filters (case-insensitive substring match). None = no filter.
