@@ -1,6 +1,7 @@
 """Watch Shaw Theatres for showtimes of target movies and alert via Telegram."""
 
 import json
+from html import escape
 import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -28,6 +29,7 @@ DAYS_TO_SCAN = 14   # for undated targets: days to check from the scan start
 PREVIEW_DAYS = 3    # start this many days before a coming-soon release date
 
 API = "https://snow-pwsm-legacy.sice.tech"
+SITE = "https://shaw.sg"
 SEEN_FILE = Path("seen.json")
 SGT = timezone(timedelta(hours=8))
 
@@ -93,7 +95,7 @@ def send(text):
 def post(token, chat, text):
     r = requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
-        json={"chat_id": chat, "text": text, "disable_web_page_preview": True},
+        json={"chat_id": chat, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True},
         timeout=30,
     )
     r.raise_for_status()
@@ -108,7 +110,10 @@ def main():
     for m in coming_soon:
         if match(m["primaryTitle"]) and f"cs:{m['movieReleaseId']}" not in seen:
             new_keys.append(f"cs:{m['movieReleaseId']}")
-            lines.append(f"🍿 Coming soon at Shaw: {m['primaryTitle']} (release {m['releaseDate'][:10]})")
+            lines.append(
+                f"🍿 Coming soon at Shaw: <a href=\"{SITE}/movie-details/{m['movieReleaseId']}\">"
+                f"{escape(m['primaryTitle'])}</a> (release {m['releaseDate'][:10]})"
+            )
 
     for d in dates_to_query(coming_soon, today):
         for m in get("get_show_times", date=d):
@@ -120,14 +125,16 @@ def main():
                 if pid in seen or pid in new_keys or not wanted(s, key):
                     continue
                 new_keys.append(pid)
+                # Time links straight to Shaw's seat selection for that session.
                 lines.append(
-                    f"🎬 {m['primaryTitle']} | {s['brandCode']} | {s['locationVenueName']} | "
-                    f"{s['displayDate']} {s['displayTime']}"
+                    f"🎬 {escape(m['primaryTitle'])} | {escape(s['brandCode'])} | "
+                    f"{escape(s['locationVenueName'])} | {s['displayDate']} "
+                    f"<a href=\"{SITE}/showtimes/{pid}\">{s['displayTime']}</a>"
                 )
 
     print(f"{len(lines)} new alert(s)")
     if lines:
-        send("\n".join(lines) + "\n\nBook: https://shaw.sg/")
+        send("\n".join(lines))
         SEEN_FILE.write_text(json.dumps(sorted(seen | set(new_keys))))
     for line in lines:
         print(line)
