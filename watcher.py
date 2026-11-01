@@ -12,7 +12,7 @@ import requests
 TARGETS = {
     "dune": None,
     "sunrise on the reaping": None,
-    "wildwood": "2026-11-07",
+    "wildwood": "2026-11-08",
     "avengers: doomsday": None,
 }
 
